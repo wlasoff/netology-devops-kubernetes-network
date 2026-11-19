@@ -30,15 +30,17 @@
 2. Файл README.md должен содержать скриншоты вывода необходимых команд, а также скриншоты результатов.
 3. Репозиторий должен содержать тексты манифестов или ссылки на них в файле README.md.
 
-## Задание 1. Настройка NetworkPolicy
+## Выполнение задания 1. 
 
-Цель работы — настроить сетевые политики Kubernetes таким образом, чтобы была разрешена только следующая цепочка взаимодействия приложений:
+## Настройка NetworkPolicy
+
+Нужно настроить сетевые политики Kubernetes таким образом, чтобы была разрешена только следующая цепочка взаимодействия приложений:
 
 ```text
 frontend  --->  backend  --->  cache
 ```
 
-Другие соединения между приложениями должны быть запрещены.
+Приетом другие соединения между приложениями должны быть запрещены.
 
 ---
 
@@ -73,7 +75,7 @@ Calico используется как сетевой плагин и обесп
 
 Манифест приложений:
 
-[`application.yaml`](application.yaml)
+[`application.yaml`](yaml/application.yaml)
 
 После запуска приложения работают в отдельных Pod:
 
@@ -120,7 +122,7 @@ cache      -> backend    : ALLOWED
 
 Файл:
 
-[`network-policy-default-deny.yaml`](network-policy-default-deny.yaml)
+[`network-policy-default-deny.yaml`](yaml/network-policy-default-deny.yaml)
 
 Политика выбирает все Pod namespace `app`:
 
@@ -137,7 +139,7 @@ policyTypes:
 
 Файл:
 
-[`network-policy-dns.yaml`](network-policy-dns.yaml)
+[`network-policy-dns.yaml`](yaml/network-policy-dns.yaml)
 
 После запрета egress приложениям отдельно разрешён доступ к CoreDNS:
 
@@ -162,7 +164,7 @@ k8s-app=kube-dns
 
 Файл:
 
-[`network-policy-frontend.yaml`](network-policy-frontend.yaml)
+[`network-policy-frontend.yaml`](yaml/network-policy-frontend.yaml)
 
 Для `frontend` разрешён исходящий TCP-трафик на порт `80` только к Pod с label:
 
@@ -178,7 +180,7 @@ frontend ---> backend:80
 
 Файл:
 
-[`network-policy-backend.yaml`](network-policy-backend.yaml)
+[`network-policy-backend.yaml`](yaml/network-policy-backend.yaml)
 
 Ingress:
 
@@ -196,7 +198,7 @@ backend ---> cache:80
 
 Файл:
 
-[`network-policy-cache.yaml`](network-policy-cache.yaml)
+[`network-policy-cache.yaml`](yaml/network-policy-cache.yaml)
 
 Для `cache` разрешён входящий TCP-трафик на порт `80` только от Pod с label:
 
@@ -233,7 +235,6 @@ cache-from-backend    app=cache
 default-deny-all      <none>
 frontend-to-backend   app=frontend
 ```
-
 ---
 
 ## Проверка DNS после применения политик
@@ -251,7 +252,6 @@ Backend разрешает имя cache:
 cache.app.svc.cluster.local
 Address: 10.152.183.17
 ```
-
 ---
 
 ## Проверка разрешённого и запрещённого трафика
@@ -282,29 +282,11 @@ frontend -> backend -> cache
 
 ### Состояние кластера, приложений, сервисов и NetworkPolicy
 
-![Resources](images/task1-resources.png)
+![Resources](images/task1-resources.jpg)
 
 ### Проверка разрешённых и запрещённых соединений
 
-![Network Policy Test](images/task1-network-policy-test.png)
-
----
-
-## Файлы
-
-```text
-.
-├── README.md
-├── application.yaml
-├── network-policy-backend.yaml
-├── network-policy-cache.yaml
-├── network-policy-default-deny.yaml
-├── network-policy-dns.yaml
-├── network-policy-frontend.yaml
-└── images
-    ├── task1-network-policy-test.png
-    └── task1-resources.png
-```
+![Network Policy Test](images/task1-network-policy-test.jpg)
 
 ---
 
