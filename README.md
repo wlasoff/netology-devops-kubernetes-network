@@ -298,7 +298,7 @@ frontend -> backend -> cache
 frontend -> backend -> cache
 ```
 
-При этом:
+Все требования задания выполнены:
 
 - `frontend -> backend` разрешён;
 - `backend -> cache` разрешён;
@@ -308,7 +308,7 @@ frontend -> backend -> cache
 - `cache -> frontend` запрещён;
 - DNS-доступ к CoreDNS сохранён.
 
-Требования задания выполнены.
+
 
 
 
