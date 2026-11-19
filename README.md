@@ -1,360 +1,333 @@
-# Домашнее задание к занятию «Helm» - Студент группы FOPS-42 Власов Владимир
-
-# Домашнее задание к занятию «Helm»
+# Домашнее задание к занятию «Как работает сеть в K8s» - Студент группы FOPS-42 Власов Владимир
 
 ### Цель задания
 
-В тестовой среде Kubernetes необходимо установить и обновить приложения с помощью Helm.
-
-------
+Настроить сетевую политику доступа к подам.
 
 ### Чеклист готовности к домашнему заданию
 
-1. Установленное k8s-решение, например, MicroK8S.
-2. Установленный локальный kubectl.
-3. Установленный локальный Helm.
-4. Редактор YAML-файлов с подключенным репозиторием GitHub.
-
-------
+1. Кластер K8s с установленным сетевым плагином Calico.
 
 ### Инструменты и дополнительные материалы, которые пригодятся для выполнения задания
 
-1. [Инструкция](https://helm.sh/docs/intro/install/) по установке Helm. [Helm completion](https://helm.sh/docs/helm/helm_completion/).
+1. [Документация Calico](https://www.tigera.io/project-calico/).
+2. [Network Policy](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+3. [About Network Policy](https://docs.projectcalico.org/about/about-network-policy).
 
-------
+-----
 
-### Задание 1. Подготовить Helm-чарт для приложения
+### Задание 1. Создать сетевую политику или несколько политик для обеспечения доступа
 
-1. Необходимо упаковать приложение в чарт для деплоя в разные окружения. 
-2. Каждый компонент приложения деплоится отдельным deployment’ом или statefulset’ом.
-3. В переменных чарта измените образ приложения для изменения версии.
-
-------
-### Задание 2. Запустить две версии в разных неймспейсах
-
-1. Подготовив чарт, необходимо его проверить. Запуститe несколько копий приложения.
-2. Одну версию в namespace=app1, вторую версию в том же неймспейсе, третью версию в namespace=app2.
-3. Продемонстрируйте результат.
+1. Создать deployment'ы приложений frontend, backend и cache и соответсвующие сервисы.
+2. В качестве образа использовать network-multitool.
+3. Разместить поды в namespace App.
+4. Создать политики, чтобы обеспечить доступ frontend -> backend -> cache. Другие виды подключений должны быть запрещены.
+5. Продемонстрировать, что трафик разрешён и запрещён.
 
 ### Правила приёма работы
 
-1. Домашняя работа оформляется в своём Git репозитории в файле README.md. Выполненное домашнее задание пришлите ссылкой на .md-файл в вашем репозитории.
-2. Файл README.md должен содержать скриншоты вывода необходимых команд `kubectl`, `helm`, а также скриншоты результатов.
+1. Домашняя работа оформляется в своём Git-репозитории в файле README.md. Выполненное домашнее задание пришлите ссылкой на .md-файл в вашем репозитории.
+2. Файл README.md должен содержать скриншоты вывода необходимых команд, а также скриншоты результатов.
 3. Репозиторий должен содержать тексты манифестов или ссылки на них в файле README.md.
 
+## Задание 1. Настройка NetworkPolicy
+
+Цель работы — настроить сетевые политики Kubernetes таким образом, чтобы была разрешена только следующая цепочка взаимодействия приложений:
+
+```text
+frontend  --->  backend  --->  cache
+```
+
+Другие соединения между приложениями должны быть запрещены.
+
 ---
 
-# Выполнение задания 1
+## Окружение
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm$ nano chart.yaml
-root@ubuntu2204:/home/ubuntu/7-helm$ nano values.yaml
-root@ubuntu2204:/home/ubuntu/7-helm$ nano values-v2.yaml
-root@ubuntu2204:/home/ubuntu/7-helm$ mkdir templates
-root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/values-v3.yaml
-root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/nginx-deployment.yaml
-root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/network-multitool-deployment.yaml
-```
+Для выполнения задания использовался существующий Kubernetes-кластер MicroK8s.
 
-### Chart.yaml
-```yaml
-apiVersion: v2
-name: my-app
-description: Helm chart for deploying nginx and wbitt/network-multitool
-version: 0.1.0
-appVersion: "1.0.0"
-```
+| Параметр | Значение |
+|---|---|
+| Kubernetes | MicroK8s v1.35.6 |
+| ОС | Ubuntu 26.04 LTS |
+| Node | `k8s` |
+| IP node | `192.168.1.56` |
+| Container Runtime | containerd 2.1.6 |
+| CNI | Calico |
+| Namespace | `app` |
+| Образ приложений | `wbitt/network-multitool:latest` |
 
-### values.yaml
-```yaml
-nginx:
-  image: nginx:1.25.3
-  replicas: 2
-  service:
-    type: ClusterIP
-    port: 80
+Calico используется как сетевой плагин и обеспечивает применение Kubernetes NetworkPolicy.
 
-networkMultitool:
-  image: wbitt/network-multitool:latest
-  replicas: 1
-  service:
-    type: ClusterIP
-    port: 8080
-```
-
-### values-v2.yaml
-```yaml
-nginx:
-  image: nginx:1.24.0
-  replicas: 2
-  service:
-    type: ClusterIP
-    port: 80
-
-networkMultitool:
-  image: wbitt/network-multitool:latest
-  replicas: 1
-  service:
-    type: ClusterIP
-    port: 8080
-```
-
-### values-v3.yaml
-```yaml
-nginx:
-  image: nginx:latest
-  replicas: 2
-  service:
-    type: ClusterIP
-    port: 80
-
-networkMultitool:
-  image: wbitt/network-multitool
-  replicas: 1
-  service:
-    type: ClusterIP
-    port: 8080
-```
-
-### templates/nginx-deployment.yaml
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}-nginx
-  labels:
-    app: {{ .Chart.Name }}
-    component: nginx
-spec:
-  replicas: {{ .Values.nginx.replicas }}
-  selector:
-    matchLabels:
-      app: {{ .Chart.Name }}
-      component: nginx
-  template:
-    metadata:
-      labels:
-        app: {{ .Chart.Name }}
-        component: nginx
-    spec:
-      containers:
-      - name: nginx
-        image: {{ .Values.nginx.image }}
-        ports:
-        - containerPort: 80
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Release.Name }}-nginx
-spec:
-  type: {{ .Values.nginx.service.type }}
-  ports:
-  - port: {{ .Values.nginx.service.port }}
-    targetPort: 80
-  selector:
-    app: {{ .Chart.Name }}
-    component: nginx
+
+## Созданные приложения
+
+В namespace `app` созданы три Deployment:
+
+- `frontend`;
+- `backend`;
+- `cache`.
+
+Для каждого Deployment создан отдельный Service типа `ClusterIP`.
+
+Манифест приложений:
+
+[`application.yaml`](application.yaml)
+
+После запуска приложения работают в отдельных Pod:
+
+```text
+backend    1/1 Running
+cache      1/1 Running
+frontend   1/1 Running
 ```
 
-### templates/network-multitool-deployment.yaml
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}-network-multitool
-  labels:
-    app: {{ .Chart.Name }}
-    component: network-multitool
-spec:
-  replicas: {{ .Values.networkMultitool.replicas }}
-  selector:
-    matchLabels:
-      app: {{ .Chart.Name }}
-      component: network-multitool
-  template:
-    metadata:
-      labels:
-        app: {{ .Chart.Name }}
-        component: network-multitool
-    spec:
-      containers:
-      - name: network-multitool
-        image: {{ .Values.networkMultitool.image }}
-        ports:
-        - containerPort: 8080
+Сервисы приложений:
+
+```text
+backend    ClusterIP   10.152.183.61    80/TCP
+cache      ClusterIP   10.152.183.17    80/TCP
+frontend   ClusterIP   10.152.183.178   80/TCP
+```
+
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Release.Name }}-network-multitool
-spec:
-  type: {{ .Values.networkMultitool.service.type }}
-  ports:
-  - port: {{ .Values.networkMultitool.service.port }}
-    targetPort: 8080
-  selector:
-    app: {{ .Chart.Name }}
-    component: network-multitool
+
+## Проверка сети до применения NetworkPolicy
+
+До создания политик в namespace `app` NetworkPolicy отсутствовали.
+
+Проверка соединений показала, что все направления были доступны:
+
+```text
+frontend   -> backend    : ALLOWED
+frontend   -> cache      : ALLOWED
+backend    -> frontend   : ALLOWED
+backend    -> cache      : ALLOWED
+cache      -> frontend   : ALLOWED
+cache      -> backend    : ALLOWED
 ```
 
-------
+Таким образом, до применения политик сетевой доступ между приложениями не был ограничен.
 
-# Выполнение задания 2
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 lint .
-==> Linting .
-[INFO] Chart.yaml: icon is recommended
+---
 
-1 chart(s) linted, 0 chart(s) failed
+## Настройка NetworkPolicy
+
+Для реализации требуемой схемы созданы пять политик.
+
+### 1. Default Deny
+
+Файл:
+
+[`network-policy-default-deny.yaml`](network-policy-default-deny.yaml)
+
+Политика выбирает все Pod namespace `app`:
+
+```yaml
+podSelector: {}
+policyTypes:
+  - Ingress
+  - Egress
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl create namespace app1
-namespace/app1 created
+После её применения ingress и egress для Pod запрещены, если доступ явно не разрешён другими NetworkPolicy.
+
+### 2. Разрешение DNS
+
+Файл:
+
+[`network-policy-dns.yaml`](network-policy-dns.yaml)
+
+После запрета egress приложениям отдельно разрешён доступ к CoreDNS:
+
+```text
+app/* ---> kube-system/CoreDNS
+
+UDP/53
+TCP/53
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v1 . -n app1
-NAME: my-app-v1
-LAST DEPLOYED: Wed 17 Nov  23:35:56 2026
-NAMESPACE: app1
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
+CoreDNS выбирается по labels:
+
+```text
+namespace:
+kubernetes.io/metadata.name=kube-system
+
+pod:
+k8s-app=kube-dns
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app1
-NAME                                               READY   STATUS    RESTARTS   AGE
-pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg   1/1     Running   0          61s
-pod/my-app-v1-nginx-66b9599867-4nlgq               1/1     Running   0          61s
-pod/my-app-v1-nginx-66b9599867-lcgfr               1/1     Running   0          61s
+### 3. Frontend -> Backend
 
-NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-service/my-app-v1-network-multitool   ClusterIP   10.152.183.247   <none>        8080/TCP   63s
-service/my-app-v1-nginx               ClusterIP   10.152.183.100   <none>        80/TCP     63s
+Файл:
 
-NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/my-app-v1-network-multitool   1/1     1            1           61s
-deployment.apps/my-app-v1-nginx               2/2     2            2           61s
+[`network-policy-frontend.yaml`](network-policy-frontend.yaml)
 
-NAME                                                     DESIRED   CURRENT   READY   AGE
-replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4   1         1         1       61s
-replicaset.apps/my-app-v1-nginx-66b9599867               2         2         2       61s
+Для `frontend` разрешён исходящий TCP-трафик на порт `80` только к Pod с label:
+
+```text
+app=backend
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v2 . -n app1 -f values-v2.yaml
-NAME: my-app-v2
-LAST DEPLOYED: Wed 17 Nov  18:05:11 2026
-NAMESPACE: app1
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
+```text
+frontend ---> backend:80
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app1
-NAME                                               READY   STATUS              RESTARTS   AGE
-pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg   1/1     Running             0          2m45s
-pod/my-app-v1-nginx-66b9599867-4nlgq               1/1     Running             0          2m45s
-pod/my-app-v1-nginx-66b9599867-lcgfr               1/1     Running             0          2m45s
-pod/my-app-v2-network-multitool-74f6fb8fd4-fls9p   1/1     Running             0          30s
-pod/my-app-v2-nginx-6ddc9c78bf-bsc7r               0/1     ContainerCreating   0          30s
-pod/my-app-v2-nginx-6ddc9c78bf-h8jsq               0/1     ContainerCreating   0          30s
+### 4. Backend
 
-NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-service/my-app-v1-network-multitool   ClusterIP   10.152.183.247   <none>        8080/TCP   2m47s
-service/my-app-v1-nginx               ClusterIP   10.152.183.100   <none>        80/TCP     2m47s
-service/my-app-v2-network-multitool   ClusterIP   10.152.183.35    <none>        8080/TCP   32s
-service/my-app-v2-nginx               ClusterIP   10.152.183.206   <none>        80/TCP     32s
+Файл:
 
-NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/my-app-v1-network-multitool   1/1     1            1           2m45s
-deployment.apps/my-app-v1-nginx               2/2     2            2           2m45s
-deployment.apps/my-app-v2-network-multitool   1/1     1            1           31s
-deployment.apps/my-app-v2-nginx               0/2     2            0           31s
+[`network-policy-backend.yaml`](network-policy-backend.yaml)
 
-NAME                                                     DESIRED   CURRENT   READY   AGE
-replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4   1         1         1       2m45s
-replicaset.apps/my-app-v1-nginx-66b9599867               2         2         2       2m45s
-replicaset.apps/my-app-v2-network-multitool-74f6fb8fd4   1         1         1       30s
-replicaset.apps/my-app-v2-nginx-6ddc9c78bf               2         2         0       30s
+Ingress:
+
+```text
+frontend ---> backend:80
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl create namespace app2
-namespace/app2 created
+Egress:
+
+```text
+backend ---> cache:80
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v3 . -n app2 -f values-v3.yaml
-NAME: my-app-v3
-LAST DEPLOYED: Wed 17 Nov  18:08:01 2026
-NAMESPACE: app2
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
+### 5. Cache
+
+Файл:
+
+[`network-policy-cache.yaml`](network-policy-cache.yaml)
+
+Для `cache` разрешён входящий TCP-трафик на порт `80` только от Pod с label:
+
+```text
+app=backend
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app2
-NAME                                               READY   STATUS    RESTARTS   AGE
-pod/my-app-v3-network-multitool-669fd8fbc9-nn6bn   1/1     Running   0          31s
-pod/my-app-v3-nginx-dd75567dc-mh6qf                1/1     Running   0          31s
-pod/my-app-v3-nginx-dd75567dc-rqvzx                1/1     Running   0          31s
-
-NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-service/my-app-v3-network-multitool   ClusterIP   10.152.183.195   <none>        8080/TCP   34s
-service/my-app-v3-nginx               ClusterIP   10.152.183.29    <none>        80/TCP     34s
-
-NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/my-app-v3-network-multitool   1/1     1            1           32s
-deployment.apps/my-app-v3-nginx               2/2     2            2           32s
-
-NAME                                                     DESIRED   CURRENT   READY   AGE
-replicaset.apps/my-app-v3-network-multitool-669fd8fbc9   1         1         1       31s
-replicaset.apps/my-app-v3-nginx-dd75567dc                2         2         2       31s
+```text
+backend ---> cache:80
 ```
 
-```bash
-root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -A
-NAMESPACE              NAME                                                        READY   STATUS    RESTARTS      AGE
-app1                   pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg            1/1     Running   0             6m27s
-app1                   pod/my-app-v1-nginx-66b9599867-4nlgq                        1/1     Running   0             6m27s
-app1                   pod/my-app-v1-nginx-66b9599867-lcgfr                        1/1     Running   0             6m27s
-app1                   pod/my-app-v2-network-multitool-74f6fb8fd4-fls9p            1/1     Running   0             4m12s
-app1                   pod/my-app-v2-nginx-6ddc9c78bf-bsc7r                        1/1     Running   0             4m12s
-app1                   pod/my-app-v2-nginx-6ddc9c78bf-h8jsq                        1/1     Running   0             4m12s
-app2                   pod/my-app-v3-network-multitool-669fd8fbc9-nn6bn            1/1     Running   0             81s
-app2                   pod/my-app-v3-nginx-dd75567dc-mh6qf                         1/1     Running   0             81s
-app2                   pod/my-app-v3-nginx-dd75567dc-rqvzx                         1/1     Running   0             81s
+---
 
-NAMESPACE              NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
-app1                   service/my-app-v1-network-multitool            ClusterIP   10.152.183.247   <none>        8080/TCP                        6m30s
-app1                   service/my-app-v1-nginx                        ClusterIP   10.152.183.100   <none>        80/TCP                          6m30s
-app1                   service/my-app-v2-network-multitool            ClusterIP   10.152.183.35    <none>        8080/TCP                        4m15s
-app1                   service/my-app-v2-nginx                        ClusterIP   10.152.183.206   <none>        80/TCP                          4m15s
-app2                   service/my-app-v3-network-multitool            ClusterIP   10.152.183.195   <none>        8080/TCP                        85s
-app2                   service/my-app-v3-nginx                        ClusterIP   10.152.183.29    <none>        80/TCP                          85s
+## Итоговая схема доступа
 
-NAMESPACE              NAME                                                   READY   UP-TO-DATE   AVAILABLE   AGE
-app1                   deployment.apps/my-app-v1-network-multitool            1/1     1            1           6m29s
-app1                   deployment.apps/my-app-v1-nginx                        2/2     2            2           6m29s
-app1                   deployment.apps/my-app-v2-network-multitool            1/1     1            1           4m15s
-app1                   deployment.apps/my-app-v2-nginx                        2/2     2            2           4m15s
-app2                   deployment.apps/my-app-v3-network-multitool            1/1     1            1           84s
-app2                   deployment.apps/my-app-v3-nginx                        2/2     2            2           84s
-
-NAMESPACE              NAME                                                              DESIRED   CURRENT   READY   AGE
-app1                   replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4            1         1         1       6m29s
-app1                   replicaset.apps/my-app-v1-nginx-66b9599867                        2         2         2       6m29s
-app1                   replicaset.apps/my-app-v2-network-multitool-74f6fb8fd4            1         1         1       4m14s
-app1                   replicaset.apps/my-app-v2-nginx-6ddc9c78bf                        2         2         2       4m14s
-app2                   replicaset.apps/my-app-v3-network-multitool-669fd8fbc9            1         1         1       83s
-app2                   replicaset.apps/my-app-v3-nginx-dd75567dc                         2         2         2       83s
+```text
+                TCP/80                 TCP/80
+frontend  ----------------> backend ----------------> cache
 ```
+
+Дополнительно всем Pod разрешён DNS-трафик к CoreDNS.
+
+Остальные соединения между `frontend`, `backend` и `cache` запрещены.
+
+---
+
+## Созданные NetworkPolicy
+
+```text
+NAME                  POD-SELECTOR
+allow-dns             <none>
+backend-access        app=backend
+cache-from-backend    app=cache
+default-deny-all      <none>
+frontend-to-backend   app=frontend
+```
+
+---
+
+## Проверка DNS после применения политик
+
+Frontend разрешает имя backend:
+
+```text
+backend.app.svc.cluster.local
+Address: 10.152.183.61
+```
+
+Backend разрешает имя cache:
+
+```text
+cache.app.svc.cluster.local
+Address: 10.152.183.17
+```
+
+---
+
+## Проверка разрешённого и запрещённого трафика
+
+```text
+--- REQUIRED CONNECTIONS ---
+
+frontend   -> backend    : ALLOWED
+backend    -> cache      : ALLOWED
+
+--- FORBIDDEN CONNECTIONS ---
+
+frontend   -> cache      : DENIED
+backend    -> frontend   : DENIED
+cache      -> backend    : DENIED
+cache      -> frontend   : DENIED
+```
+
+Разрешена только требуемая цепочка:
+
+```text
+frontend -> backend -> cache
+```
+
+---
+
+## Скриншоты
+
+### Состояние кластера, приложений, сервисов и NetworkPolicy
+
+![Resources](images/task1-resources.png)
+
+### Проверка разрешённых и запрещённых соединений
+
+![Network Policy Test](images/task1-network-policy-test.png)
+
+---
+
+## Файлы
+
+```text
+.
+├── README.md
+├── application.yaml
+├── network-policy-backend.yaml
+├── network-policy-cache.yaml
+├── network-policy-default-deny.yaml
+├── network-policy-dns.yaml
+├── network-policy-frontend.yaml
+└── images
+    ├── task1-network-policy-test.png
+    └── task1-resources.png
+```
+
+---
+
+## Результат
+
+С помощью Calico и Kubernetes NetworkPolicy настроена схема:
+
+```text
+frontend -> backend -> cache
+```
+
+При этом:
+
+- `frontend -> backend` разрешён;
+- `backend -> cache` разрешён;
+- `frontend -> cache` запрещён;
+- `backend -> frontend` запрещён;
+- `cache -> backend` запрещён;
+- `cache -> frontend` запрещён;
+- DNS-доступ к CoreDNS сохранён.
+
+Требования задания выполнены.
+
 
 
 
